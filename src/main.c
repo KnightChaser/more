@@ -1,12 +1,31 @@
 // src/main.c
+#define _XOPEN_SOURCE 700
 #include "consts.h"
 #include "utils.h"
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
+volatile sig_atomic_t g_resize_flag = 0;
+
+void handle_sigwinch(int sig) {
+    (void)sig;         // Suppress unused parameter warning
+    g_resize_flag = 1; // Set the flag to indicate a resize event
+}
+
 int main(int argc, char *argv[]) {
+    // Register the signal handler for terminal window size changes
+    struct sigaction sa;
+    sa.sa_handler = handle_sigwinch; // Set handler function
+    sigemptyset(&sa.sa_mask);        // Don't block any other signals
+    sa.sa_flags = SA_RESTART;        // Restart interrupted system calls
+    if (sigaction(SIGWINCH, &sa, NULL) == -1) {
+        perror("sigaction");
+        return 1;
+    }
+
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <file>\n", argv[0]);
         return 1;
@@ -26,15 +45,33 @@ int main(int argc, char *argv[]) {
 
     // Continues as long as the user doesn't quit
     int terminal_rows = get_terminal_rows();
+    long page_start_pos = 0; // Where the current page starts
+
     int lines_this_page = display_page(file, terminal_rows - 1);
-    if (lines_this_page < terminal_rows - 1) {
-        // If the file is shorter than a single page,
-        // display the entire content and exit.
+    if (feof(file)) {
         fclose(file);
         return 0;
     }
 
     while (true) {
+        if (g_resize_flag) {
+            g_resize_flag = 0;
+            terminal_rows = get_terminal_rows();
+
+            // Reposition to the start of the current page
+            fseek(file, page_start_pos, SEEK_SET);
+
+            // Redraw the screen from that position with the new dimensions
+            printf("\033[2J\033[H"); // Clear screen and go to home
+            fflush(stdout);
+            display_page(file, terminal_rows - 1);
+
+            // If the redraw finished the file, exit
+            if (feof(file)) {
+                break;
+            }
+        }
+
         long current_pos = ftell(file);
         int percent_done =
             (file_size > 0) ? (current_pos * 100 / file_size) : 0;
@@ -103,5 +140,6 @@ int main(int argc, char *argv[]) {
     }
 
     fclose(file);
+    printf("\n"); // Move to a new line after exiting...
     return 0;
 }

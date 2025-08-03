@@ -3,5 +3,6 @@
 executable(
   'more',
   'main.c',
+  'utils.c',
   install: true,
 )

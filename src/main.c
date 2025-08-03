@@ -15,11 +15,16 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // Get the file size
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    rewind(file);
+
+    // Continues as long as the user doesn't quit
     int terminal_rows = get_terminal_rows();
     int reply = 0;
     int lines_this_page = 0;
 
-    // Continues as long as the user doesn't quit
     do {
         int lines_to_show = terminal_rows - 1;
         lines_this_page = display_page(file, lines_to_show);
@@ -28,12 +33,17 @@ int main(int argc, char *argv[]) {
             break;
         }
 
+        long current_pos = ftell(file);
+        int percent_done =
+            (file_size > 0) ? (current_pos * 100 / file_size) : 0;
+
         // Display the --More-- prompt and get the next command.
-        printf("\033[7m--More--\033[m"); // \033[7m is inverse video, \033[m
-                                         // resets it
+        // \033[7m is inverse video,
+        // \033[m resets it
+        printf("\033[7m--More-- (%d%%)\033[m", percent_done);
 
         reply = get_user_command();
-        printf("\r        \r"); // Clear the prompt line
+        printf("\r               \r"); // Clear the prompt line
 
         // 'q' to quit, ' ' for next page, Enter for next line.
         if (reply == ' ') {

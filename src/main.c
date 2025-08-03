@@ -1,5 +1,4 @@
 // src/main.c
-#include "consts.h"
 #include "utils.h"
 #include <stdio.h>
 

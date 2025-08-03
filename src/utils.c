@@ -1,6 +1,8 @@
 // src/utils.c
 #include "consts.h"
+#include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
@@ -48,6 +50,10 @@ int get_user_command(void) {
     // Apply the new settings
     tcsetattr(STDIN_FILENO, TCSANOW, &new_settings);
 
+    // Flushes input data that has been received by the system but not read by
+    // an application (a pending input).
+    tcflush(STDIN_FILENO, TCIFLUSH);
+
     // Wait for a single character
     int ch = getchar();
 
@@ -76,4 +82,37 @@ int display_page(FILE *file, int num_lines) {
     }
 
     return lines_printed;
+}
+
+/**
+ * Search for a term in the file from the current position.
+ * If the term is found, it clears the screen and displays the line containing
+ * the term, then continues displaying the rest of the page.
+ *
+ * @param file The file pointer to search in.
+ * @param term The search term to look for.
+ * @param terminal_rows The number of rows in the terminal to display.
+ * @return true if the term was found and displayed, false otherwise.
+ */
+bool search_forward(FILE *file, const char *term, int terminal_rows) {
+    char line_buffer[MAX_LINE_LENGTH] = {0};
+
+    // Read line-by-lline from the current file position and search for the term
+    while (fgets(line_buffer, sizeof(line_buffer), file) != NULL) {
+        if (strstr(line_buffer, term) != NULL) {
+            // Clear the entire screen and move the cursor to the top-left
+            // (home)
+            // and flush to ensure screen clears immediately
+            printf("\033[2J\033[H");
+            fflush(stdout);
+
+            printf("%s", line_buffer);
+
+            // Continue displaying rest of the page
+            display_page(file, terminal_rows - 2);
+
+            return true;
+        }
+    }
+    return false;
 }

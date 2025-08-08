@@ -26,22 +26,31 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <file>\n", argv[0]);
+    FILE *file = NULL;
+    long file_size = -1;
+
+    // Decide the input source: a file path argument or a pipe(stdin)
+    if (argc > 1) {
+        // A file path is provided as an argument
+        const char *filename = argv[1];
+        file = fopen(filename, "r");
+        if (file == NULL) {
+            perror("Error opening file");
+            return 1;
+        }
+
+        // Get the ile size for seekable files
+        fseek(file, 0, SEEK_END);
+        file_size = ftell(file);
+        rewind(file);
+    } else if (!isatty(STDIN_FILENO)) {
+        // No file argument, but input is coming from a pipe
+        file = stdin;
+    } else {
+        // No file and no pipe. Print usage.
+        fprintf(stderr, "Usage: %s <filename\n", argv[0]);
         return 1;
     }
-
-    const char *filename = argv[1];
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-        perror("Error opening file");
-        return 1;
-    }
-
-    // Get the file size
-    fseek(file, 0, SEEK_END);
-    long file_size = ftell(file);
-    rewind(file);
 
     // Continues as long as the user doesn't quit
     int terminal_rows = get_terminal_rows();
@@ -72,13 +81,18 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        long current_pos = ftell(file);
-        int percent_done =
-            (file_size > 0) ? (current_pos * 100 / file_size) : 0;
+        if (file_size > 0) {
+            long current_pos = ftell(file);
+            int percent_done =
+                (file_size > 0) ? (current_pos * 100 / file_size) : 0;
 
-        // Display the --More-- prompt and get the next command.
-        printf("%s--More-- (%d%%)%s", ANSI_INVERSE_VIDEO, percent_done,
-               ANSI_RESET);
+            // Display the --More-- prompt and get the next command.
+            printf("%s--More-- (%d%%)%s", ANSI_INVERSE_VIDEO, percent_done,
+                   ANSI_RESET);
+        } else {
+            // No percentage if input is from a pipe
+            printf("%s--More--%s", ANSI_INVERSE_VIDEO, ANSI_RESET);
+        }
         fflush(stdout);
 
         int reply = get_user_command();

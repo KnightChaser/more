@@ -1,5 +1,6 @@
 // src/utils.c
 #include "consts.h"
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -38,29 +39,28 @@ int get_terminal_rows(void) {
  * @return The character read from the user.
  */
 int get_user_command(void) {
-    struct termios original_settings, new_settings;
+    int tty_fd = open("/dev/tty", O_RDONLY);
 
-    // Get the current terminal settings
-    tcgetattr(STDIN_FILENO, &original_settings);
-    new_settings = original_settings;
+    if (tty_fd < 0) {
+        perror("open /dev/tty");
+        return EOF; // Return EOF on error
+    }
 
-    // Change settings for the raw mode
-    new_settings.c_lflag &= ~(ICANON | ECHO);
+    struct termios orig, raw;
+    tcgetattr(tty_fd, &orig); // Get the original terminal settings
+    raw = orig;
+    raw.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(tty_fd, TCSANOW, &raw); // Set the terminal to raw mode
 
-    // Apply the new settings
-    tcsetattr(STDIN_FILENO, TCSANOW, &new_settings);
+    char ch = 0;
+    if (read(tty_fd, &ch, 1) < 0) {
+        ch = EOF;
+    }
 
-    // Flushes input data that has been received by the system but not read by
-    // an application (a pending input).
-    tcflush(STDIN_FILENO, TCIFLUSH);
+    tcsetattr(tty_fd, TCSANOW, &orig); // Restore the original settings
+    close(tty_fd);
 
-    // Wait for a single character
-    int ch = getchar();
-
-    // NOTE: restore the original terminal settings after reading input
-    tcsetattr(STDIN_FILENO, TCSANOW, &original_settings);
-
-    return ch;
+    return ch; // Return the character read
 }
 
 /**

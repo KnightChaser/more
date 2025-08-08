@@ -121,11 +121,11 @@ int main(int argc, char *argv[]) {
             long pre_search_pos = ftell(file); // save current position
 
             printf("/");
-            fflush(stdout);
-            if (fgets(search_term, sizeof(search_term), stdin) == NULL) {
-                // Input failed, continue to the next iteration
+            FILE *tty = fopen("/dev/tty", "r");
+            if (!tty || fgets(search_term, sizeof(search_term), tty) == NULL) {
                 continue;
             }
+            fclose(tty);
 
             // Remove the trailing newline that fgets() captures
             search_term[strcspn(search_term, "\n")] = 0;

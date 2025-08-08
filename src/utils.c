@@ -103,7 +103,7 @@ bool search_forward(FILE *file, const char *term, int terminal_rows) {
             // Clear the entire screen and move the cursor to the top-left
             // (home)
             // and flush to ensure screen clears immediately
-            printf("\033[2J\033[H");
+            printf("%s%s", ANSI_CLEAR_SCREEN, ANSI_CURSOR_HOME);
             fflush(stdout);
 
             printf("%s", line_buffer);

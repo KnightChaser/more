@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
             fseek(file, page_start_pos, SEEK_SET);
 
             // Redraw the screen from that position with the new dimensions
-            printf("\033[2J\033[H"); // Clear screen and go to home
+            printf("%s%s", ANSI_CLEAR_SCREEN, ANSI_CURSOR_HOME);
             fflush(stdout);
             display_page(file, terminal_rows - 1);
 
@@ -77,13 +77,12 @@ int main(int argc, char *argv[]) {
             (file_size > 0) ? (current_pos * 100 / file_size) : 0;
 
         // Display the --More-- prompt and get the next command.
-        // \033[7m is inverse video,
-        // \033[m resets it
-        printf("\033[7m--More-- (%d%%)\033[m", percent_done);
+        printf("%s--More-- (%d%%)%s", ANSI_INVERSE_VIDEO, percent_done,
+               ANSI_RESET);
         fflush(stdout);
 
         int reply = get_user_command();
-        printf("\r               \r");
+        printf("\r%s", ANSI_CLEAR_LINE_FROM_CURSOR);
 
         if (reply == 'q') {
             // 'q' to exit the loop and quit the program immediately
@@ -127,7 +126,8 @@ int main(int argc, char *argv[]) {
             } else {
                 // If the search is not successful, restore the file position
                 // after notifying the user
-                printf("\033[7mPattern not found: %s\033[m", search_term);
+                printf("%sPattern not found: %s%s", ANSI_INVERSE_VIDEO,
+                       search_term, ANSI_RESET);
                 fflush(stdout);
                 sleep(2); // Pause so the user can read the message
 

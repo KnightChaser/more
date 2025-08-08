@@ -11,5 +11,4 @@ project(
 )
 
 subdir('src')
-
-# subdir('test')
+subdir('test')
